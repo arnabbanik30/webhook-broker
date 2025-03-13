@@ -5,8 +5,8 @@ import { NotFoundError, TaskDispatchError } from '../schemas/error';
 const router = Router();
 
 // Wrapper to catch async errors and return a 500 error
-function catchAsync(fn: (req: Request, res: Response) => Promise<any>) {
-    return async (req: Request, res: Response) => {
+function catchAsync(fn: (req: Request<any, any, any, any>, res: Response) => Promise<any>) {
+    return async (req: Request<any, any, any, any>, res: Response) => {
         try {
             await fn(req, res);
         } catch (e) {

@@ -7,7 +7,7 @@ import { runWorker } from './message-queue';
 export async function startDeliveryWorker() {
     runWorker(async (channel: amqp.Channel) => {
         console.log('Webhook delivery worker started, waiting for messages...');
-        channel.consume(config.RABBITMQ_QUEUE, async (msg: amqp.Message) => {
+        channel.consume(config.RABBITMQ_QUEUE, async (msg: amqp.ConsumeMessage | null) => {
             if (msg) {
                 const { eventName, webhookUrl, payload } = JSON.parse(msg.content.toString());
                 try {

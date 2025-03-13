@@ -25,9 +25,9 @@ export async function dispatchWebhookTasks(eventName: string, payload: any): Pro
         throw new NotFoundError("Event not found in webhook registry");
     }
 
-    let results: boolean[];
+    let results: boolean[] = [];
 
-    runWorker((channel: amqp.Channel) => {
+    await runWorker((channel: amqp.Channel) => {
         results = webhooks.map((wh) => channel.sendToQueue(
             config.RABBITMQ_QUEUE,
             Buffer.from(JSON.stringify({ webhookUrl: wh.webhookUrl, payload })),

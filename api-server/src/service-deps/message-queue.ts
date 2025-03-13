@@ -5,14 +5,18 @@ import { connectAndConfigureMQ } from "../configs/message-queue";
 export async function runWorker(
     worker: (channel: amqp.Channel) => void | Promise<void>
 ) {
-    let connection: amqp.ChannelModel, channel: amqp.Channel;
+    let connection: amqp.ChannelModel | null = null, channel: amqp.Channel | null = null;
     try {
-        [connection, channel] = await connectAndConfigureMQ();
+        const conf = await connectAndConfigureMQ();
+        connection = conf.connection;
+        channel = conf.channel;
         const result = worker(channel);
         if (result instanceof Promise) {
             await result;
         }
     } finally {
-        connection.close();
+        if (connection) {
+            await connection.close();
+        }
     }
 }
