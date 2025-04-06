@@ -1,13 +1,15 @@
 import client, {
   Connection,
   Channel,
-  ConsumeMessage,
   ChannelModel,
 } from "amqplib";
 
-import { rmqUser, rmqPass, rmqhost } from "./config";
-
-const delay = (ms: number) => new Promise((res) => setTimeout(res, ms));
+import {
+  rmqUser,
+  rmqPass,
+  rmqhost,
+  WEBHOOK_EVENTS_QUEUE,
+} from "./config";
 
 import { dummyPoster } from "./dummyPoster";
 
@@ -33,12 +35,48 @@ class RabbitMQConnection {
       this.channel = await channelModel.createChannel();
 
       console.log(`🛸 Created RabbitMQ Channel successfully`);
+
     } catch (error) {
       console.error(error);
       console.error(`Not connected to MQ Server`);
     }
   }
+
+  async createDelayQueues() {
+    if (!this.channel) {
+      await this.connect();
+    }
+
+    const ttls = [1000, 2000, 4000, 8000, 16000];
+
+    for (let i = 0; i < 5; i++) {
+      const queueName = `retry_queue_${i + 1}`;
+      const ttl = ttls[i];
+
+      await this.channel.assertQueue(queueName, {
+        durable: true,
+        deadLetterExchange: "",
+        deadLetterRoutingKey: WEBHOOK_EVENTS_QUEUE,
+        messageTtl: ttl,
+      });
+    }
+  }
+
+  async sendToRetryQueue(queue_no: number, msg: any) {
+    const queueName = `retry_queue_${queue_no}`;
+    this.channel.sendToQueue(queueName, Buffer.from(JSON.stringify(msg)), {
+      persistent: true,
+    });
+  }
+
+  async postMsg(url: string, payload: string) {
+    let res = await dummyPoster(url, payload);
+    return res;
+  }
+
   async consume(queue: string) {
+    await this.createDelayQueues();
+
     try {
       if (!this.channel) {
         await this.connect();
@@ -46,32 +84,34 @@ class RabbitMQConnection {
       if (this.channel) {
         await this.channel.assertQueue(queue, { durable: true });
         this.channel.prefetch(1);
+      
         await this.channel.consume(queue, async (msg) => {
           if (!msg) return;
           let strMsg = msg.content.toString();
           let parsedMsg = JSON.parse(strMsg);
-          console.log(strMsg);
-          const { eventName, url, payload } = parsedMsg;
-          let attempt = 0;
-          let success = false;
 
-          while (!success && attempt < 5) {
-            let res = await dummyPoster(url, payload);
-            if (res) {
-              success = true;
+          const {url, payload, attemptCount } = parsedMsg;
+         
+          const success = await this.postMsg(url, payload);
+         
+          if (!success){
+            if (!attemptCount || attemptCount < 5) {
+              // requeue with exponential backoff if the msg is not delivered
+              const updatedAttemptCount = !attemptCount? 1 : attemptCount + 1;
+              await this.sendToRetryQueue(updatedAttemptCount, {
+                url: url,
+                payload: payload,
+                attemptCount: updatedAttemptCount,
+              });
               this.channel.ack(msg);
-              console.log(`Sent successfully to ${url}`)
-            } else {
-              attempt++;
-              const backoff = Math.pow(2, attempt) * 1000;
-              console.log(`Retrying ${url} in ${backoff}ms`);
-              await delay(backoff);
+            }
+            else {
+              // dead-letter the msg if the delivery fails 5 times.
+              this.channel.nack(msg, false, false);
             }
           }
-
-          if (!success){
-            console.log("Message failed after 5 attempts, sending to DLQ");
-            this.channel?.nack(msg, false, false);
+          else {
+            this.channel.ack(msg);
           }
         });
       } else {
