@@ -1,6 +1,7 @@
 import client, {
   Connection,
   Channel,
+
   ChannelModel,
 } from "amqplib";
 
@@ -10,6 +11,7 @@ import {
   rmqhost,
   WEBHOOK_EVENTS_QUEUE,
 } from "./config";
+
 
 import { dummyPoster } from "./dummyPoster";
 
@@ -35,7 +37,6 @@ class RabbitMQConnection {
       this.channel = await channelModel.createChannel();
 
       console.log(`🛸 Created RabbitMQ Channel successfully`);
-
     } catch (error) {
       console.error(error);
       console.error(`Not connected to MQ Server`);
@@ -84,7 +85,7 @@ class RabbitMQConnection {
       if (this.channel) {
         await this.channel.assertQueue(queue, { durable: true });
         this.channel.prefetch(1);
-      
+
         await this.channel.consume(queue, async (msg) => {
           if (!msg) return;
           let strMsg = msg.content.toString();
@@ -112,6 +113,7 @@ class RabbitMQConnection {
           }
           else {
             this.channel.ack(msg);
+
           }
         });
       } else {
