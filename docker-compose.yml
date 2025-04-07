@@ -1,0 +1,46 @@
+services:
+  api-server:
+    build:
+      context: ./api-server
+      dockerfile: Dockerfile
+    ports:
+      - "3000:3000"
+    env_file:
+        - ./.env
+    environment:
+      - RABBITMQ_URI=${RABBITMQ_URI}
+      - RABBITMQ_QUEUE=${RABBITMQ_QUEUE}
+      - MONGO_INITDB_ROOT_USERNAME=${MONGO_INITDB_ROOT_USERNAME}
+      - MONGO_INITDB_ROOT_PASSWORD=${MONGO_INITDB_ROOT_PASSWORD}
+      - MONGO_INITDB_DATABASE=${MONGO_INITDB_DATABASE}
+      - MONGO_URI=${MONGO_URI}
+      - NODE_ENV=${NODE_ENV}
+      - PORT=${PORT}
+    depends_on:
+      - mongodb
+      - rabbitmq
+
+  rabbitmq:
+    image: rabbitmq:3-management
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    env_file:
+        - ./.env
+
+  mongodb:
+    image: mongo:5.0
+    restart: unless-stopped
+    volumes:
+      - ./mongo-data:/data/db
+    ports:
+      - "27017:27017"
+    env_file:
+        - ./.env
+    environment:
+      - MONGO_INITDB_ROOT_USERNAME=${MONGO_INITDB_ROOT_USERNAME}
+      - MONGO_INITDB_ROOT_PASSWORD=${MONGO_INITDB_ROOT_PASSWORD}
+      - MONGO_INITDB_DATABASE=${MONGO_INITDB_DATABASE}
+      - MONGO_URI=${MONGO_URI}
+    command: [ "--auth" ]
+

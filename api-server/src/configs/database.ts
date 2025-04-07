@@ -1,6 +1,6 @@
 import { connect } from 'mongoose';
-import config from './configvars';
 
 export async function connectDb() {
-    await connect(config.MONGO_URI);
+    console.log(`Connecting to MongoDB: ${process.env.MONGO_URI}`);
+    await connect(process.env.MONGO_URI);
 };

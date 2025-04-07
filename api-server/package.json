@@ -2,10 +2,9 @@
   "name": "webhook-broker",
   "version": "1.0.0",
   "description": "",
-  "main": "index.js",
   "scripts": {
     "build": "tsc",
-    "start": "node dist/service-entries/webhook-api.js"
+    "start": "node dist/service-entries/api-server.js"
   },
   "keywords": [],
   "author": "",
@@ -14,11 +13,13 @@
   "devDependencies": {
     "@types/amqplib": "^0.10.7",
     "@types/express": "^5.0.0",
-    "@types/node": "^22.13.10"
+    "@types/node": "^22.13.10",
+    "typescript": "^5.8.2"
   },
   "dependencies": {
     "amqplib": "0.10.5",
     "axios": "^1.8.2",
+    "bs-logger": "^0.2.6",
     "express": "^4.21.2",
     "mongoose": "^8.12.1"
   }
